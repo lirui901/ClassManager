@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}我的课程 - 学生端{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="bi bi-calendar-week"></i> 我的课程
+            <small class="text-muted">课程安排与学习计划</small>
+        </h2>
+    </div>
+</div>
+
+{% if student and student.class_obj %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-journal-bookmark"></i> {{ student.class_obj.name }} 课程表
+                <span class="badge bg-light text-dark ms-2">{{ student.class_obj.get_level_display }}</span>
+            </div>
+            <div class="card-body">
+                {% if courses %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>课程名称</th>
+                                <th>星期</th>
+                                <th>时间</th>
+                                <th>教室</th>
+                                <th>课时</th>
+                                <th>课程描述</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for course in courses %}
+                            <tr>
+                                <td><strong>{{ course.name }}</strong></td>
+                                <td>{{ course.weekday }}</td>
+                                <td>{{ course.start_time|time:"H:i" }} - {{ course.end_time|time:"H:i" }}</td>
+                                <td>{{ course.classroom|default:"未指定" }}</td>
+                                <td>{{ course.duration }}分钟</td>
+                                <td>{{ course.description|default:"暂无描述"|truncatechars:30 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-calendar-x display-1 text-muted"></i>
+                    <p class="mt-3">暂无课程安排，请联系老师</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-clock-history"></i> 学习进度
+            </div>
+            <div class="card-body">
+                {% if student.total_lessons > 0 %}
+                <div class="progress mb-3" style="height: 30px;">
+                    <div class="progress-bar bg-success" role="progressbar" 
+                         style="width: {% widthratio student.remaining_lessons student.total_lessons 100 %}%;">
+                        {{ student.remaining_lessons }}/{{ student.total_lessons }} 课时
+                    </div>
+                </div>
+                {% else %}
+                <div class="progress mb-3" style="height: 30px;">
+                    <div class="progress-bar bg-secondary" role="progressbar" style="width: 0%;">
+                        0/0 课时
+                    </div>
+                </div>
+                {% endif %}
+                <p><strong>剩余课时：</strong> {{ student.remaining_lessons }} 节</p>
+                <p><strong>已完成：</strong> {% widthratio student.total_lessons|add:student.remaining_lessons 1 1 %} 节</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-chat-dots"></i> 学习建议
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li><i class="bi bi-check-circle-fill text-success me-2"></i> 按时完成作业</li>
+                    <li><i class="bi bi-check-circle-fill text-success me-2"></i> 积极参与课堂讨论</li>
+                    <li><i class="bi bi-check-circle-fill text-success me-2"></i> 定期复习所学内容</li>
+                    <li><i class="bi bi-check-circle-fill text-success me-2"></i> 遇到问题及时请教老师</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i> 暂无学生信息，请联系老师添加您的信息
+</div>
+{% endif %}
+{% endblock %}

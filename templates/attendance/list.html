@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+
+{% block title %}签到记录 - 班级管理系统{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="mb-4">签到记录</h2>
+        <div class="row">
+            <div class="col-md-4">
+                <select class="form-select" id="classSelect" onchange="loadAttendance()">
+                    <option value="">选择班级</option>
+                    {% for class in classes %}
+                    <option value="{{ class.id }}">{{ class.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input type="date" class="form-control" id="dateSelect" value="{{ today }}" onchange="loadAttendance()">
+            </div>
+            <div class="col-md-5">
+                <button class="btn btn-success" onclick="quickCheckIn()" id="quickCheckInBtn" disabled>
+                    <i class="bi bi-check-circle"></i> 一键签到
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>学生姓名</th>
+                                <th>剩余课时</th>
+                                <th>签到状态</th>
+                                <th>签到时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceTableBody">
+                            <tr>
+                                <td colspan="5" class="text-center">请先选择班级</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 补签模态框 -->
+<div class="modal fade" id="makeupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">补签/退课时</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="makeupForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="originalDate" class="form-label">原签到日期</label>
+                        <input type="date" class="form-control" id="originalDate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="makeupReason" class="form-label">原因</label>
+                        <textarea class="form-control" id="makeupReason" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="makeupLessons" class="form-label">调整课时</label>
+                        <input type="number" class="form-control" id="makeupLessons" value="1">
+                        <div class="form-text">正数为增加课时，负数为扣除课时</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveMakeup()">确认</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentClassId = null;
+let currentStudentId = null;
+
+function loadAttendance() {
+    const classId = document.getElementById('classSelect').value;
+    const date = document.getElementById('dateSelect').value;
+    
+    if (!classId) return;
+    
+    currentClassId = classId;
+    document.getElementById('quickCheckInBtn').disabled = false;
+    
+    fetch(`/attendance/api/class/${classId}/${date}/`)
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.getElementById('attendanceTableBody');
+            let html = '';
+            data.records.forEach(record => {
+                html += `
+                    <tr>
+                        <td>${record.student_name}</td>
+                        <td>${record.remaining_lessons}</td>
+                        <td>
+                            <select class="form-select form-select-sm" onchange="updateStatus(${record.student_id}, this.value)">
+                                <option value="present" ${record.status === 'present' ? 'selected' : ''}>已签到</option>
+                                <option value="late" ${record.status === 'late' ? 'selected' : ''}>迟到</option>
+                                <option value="leave" ${record.status === 'leave' ? 'selected' : ''}>请假</option>
+                                <option value="absent" ${record.status === 'absent' ? 'selected' : ''}>缺勤</option>
+                            </select>
+                        </td>
+                        <td>${record.check_in_time || '-'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-warning" onclick="showMakeupModal(${record.student_id})">
+                                <i class="bi bi-pencil-square"></i> 补签
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        });
+}
+
+function updateStatus(studentId, status) {
+    fetch('/attendance/api/checkin/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            student_id: studentId,
+            class_id: currentClassId,
+            status: status
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadAttendance();
+        }
+    });
+}
+
+function quickCheckIn() {
+    if (!confirm('确定要为所有学生一键签到吗？')) return;
+    
+    const tbody = document.getElementById('attendanceTableBody');
+    const rows = tbody.getElementsByTagName('tr');
+    const promises = [];
+    
+    for (let row of rows) {
+        const studentId = row.getAttribute('data-student-id');
+        if (studentId) {
+            promises.push(
+                fetch('/attendance/api/checkin/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({
+                        student_id: studentId,
+                        class_id: currentClassId,
+                        status: 'present'
+                    })
+                })
+            );
+        }
+    }
+    
+    Promise.all(promises).then(() => {
+        loadAttendance();
+    });
+}
+
+function showMakeupModal(studentId) {
+    currentStudentId = studentId;
+    document.getElementById('originalDate').value = '';
+    document.getElementById('makeupReason').value = '';
+    document.getElementById('makeupLessons').value = '1';
+    new bootstrap.Modal(document.getElementById('makeupModal')).show();
+}
+
+function saveMakeup() {
+    const data = {
+        student_id: currentStudentId,
+        original_date: document.getElementById('originalDate').value,
+        reason: document.getElementById('makeupReason').value,
+        lessons_adjusted: parseInt(document.getElementById('makeupLessons').value) || 0
+    };
+    
+    fetch('/attendance/api/makeup/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('makeupModal')).hide();
+            loadAttendance();
+        } else {
+            alert('操作失败');
+        }
+    });
+}
+
+// 设置今天的日期
+document.getElementById('dateSelect').value = new Date().toISOString().split('T')[0];
+</script>
+{% endblock %}

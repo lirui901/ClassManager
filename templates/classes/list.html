@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+
+{% block title %}班级列表 - 班级管理系统{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="mb-4">班级管理</h2>
+        <button class="btn btn-primary" onclick="showAddClassModal()">
+            <i class="bi bi-plus-circle"></i> 新建班级
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    {% for class in classes %}
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>{{ class.name }}</span>
+                <span class="badge bg-info">{{ class.get_level_display }}</span>
+            </div>
+            <div class="card-body">
+                <p class="card-text">
+                    <strong>教师：</strong> {{ class.teacher.username|default:"未分配" }}<br>
+                    <strong>学生人数：</strong> {{ class.student_count }}<br>
+                    <strong>创建时间：</strong> {{ class.created_at|date:"Y-m-d" }}
+                </p>
+                <div class="btn-group" role="group">
+                    <a href="{% url 'student_list' %}?class_id={{ class.id }}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-people"></i> 查看学生
+                    </a>
+                    <button class="btn btn-sm btn-outline-warning" onclick="editClass({{ class.id }})">
+                        <i class="bi bi-pencil"></i> 编辑
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteClass({{ class.id }})">
+                        <i class="bi bi-trash"></i> 删除
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info">
+            暂无班级，请点击"新建班级"按钮创建。
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- 新建/编辑班级模态框 -->
+<div class="modal fade" id="classModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="classModalTitle">新建班级</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="classForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="className" class="form-label">班级名称</label>
+                        <input type="text" class="form-control" id="className" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="classLevel" class="form-label">班级级别</label>
+                        <select class="form-select" id="classLevel">
+                            <option value="beginner">初级</option>
+                            <option value="intermediate">中级</option>
+                            <option value="advanced">高级</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveClass()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentClassId = null;
+
+function showAddClassModal() {
+    currentClassId = null;
+    document.getElementById('classModalTitle').textContent = '新建班级';
+    document.getElementById('className').value = '';
+    document.getElementById('classLevel').value = 'beginner';
+    new bootstrap.Modal(document.getElementById('classModal')).show();
+}
+
+function editClass(classId) {
+    currentClassId = classId;
+    document.getElementById('classModalTitle').textContent = '编辑班级';
+    
+    // 获取班级信息
+    fetch(`/classes/api/${classId}/edit/`, {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('className').value = data.name;
+        document.getElementById('classLevel').value = data.level;
+        new bootstrap.Modal(document.getElementById('classModal')).show();
+    });
+}
+
+function saveClass() {
+    const name = document.getElementById('className').value;
+    const level = document.getElementById('classLevel').value;
+    
+    const url = currentClassId ? 
+        `/classes/api/${currentClassId}/edit/` : 
+        '/classes/api/add/';
+    const method = currentClassId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({ name: name, level: level })
+    })
+    .then(response => {
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('操作失败');
+        }
+    });
+}
+
+function deleteClass(classId) {
+    if (confirm('确定要删除这个班级吗？')) {
+        fetch(`/classes/api/${classId}/delete/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('删除失败');
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

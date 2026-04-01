@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}老师端 - 班级管理系统{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="bi bi-person-badge"></i> 老师端仪表盘
+            <small class="text-muted">欢迎回来，{{ user.username }}老师</small>
+        </h2>
+    </div>
+</div>
+
+<!-- 统计卡片 -->
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">负责班级</h6>
+                        <h2 class="card-text mb-0">{{ class_count }}</h2>
+                    </div>
+                    <i class="bi bi-journal-bookmark fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">学生总数</h6>
+                        <h2 class="card-text mb-0">{{ student_count }}</h2>
+                    </div>
+                    <i class="bi bi-people fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">今日签到</h6>
+                        <h2 class="card-text mb-0">{{ today_attendance }}</h2>
+                    </div>
+                    <i class="bi bi-calendar-check fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">待处理申请</h6>
+                        <h2 class="card-text mb-0">{{ pending_makeup }}</h2>
+                    </div>
+                    <i class="bi bi-envelope fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 快速操作 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-lightning-charge"></i> 快速操作
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <a href="{% url 'attendance_list' %}" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-calendar-check"></i> 签到管理
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{% url 'class_list' %}" class="btn btn-outline-success w-100">
+                            <i class="bi bi-journal-bookmark"></i> 班级管理
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{% url 'student_list' %}" class="btn btn-outline-info w-100">
+                            <i class="bi bi-people"></i> 学生管理
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{% url 'summary_list' %}" class="btn btn-outline-warning w-100">
+                            <i class="bi bi-journal-text"></i> 课堂总结
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 我的班级 -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-journal-bookmark"></i> 我的班级</span>
+                <a href="{% url 'class_list' %}" class="btn btn-sm btn-outline-primary">查看全部</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>班级名称</th>
+                                <th>级别</th>
+                                <th>学生人数</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for class in classes %}
+                            <tr>
+                                <td>{{ class.name }}</td>
+                                <td>{{ class.get_level_display }}</td>
+                                <td>{{ class.student_count }}</td>
+                                <td>{{ class.created_at|date:"Y-m-d" }}</td>
+                                <td>
+                                    <a href="{% url 'student_list' %}?class_id={{ class.id }}" class="btn btn-sm btn-info">
+                                        <i class="bi bi-people"></i> 查看学生
+                                    </a>
+                                    <a href="{% url 'attendance_list' %}?class_id={{ class.id }}" class="btn btn-sm btn-success">
+                                        <i class="bi bi-calendar-check"></i> 签到
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">暂无班级</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

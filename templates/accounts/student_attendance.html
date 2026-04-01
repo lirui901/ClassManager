@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+
+{% block title %}考勤记录 - 学生端{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="bi bi-calendar-check"></i> 考勤记录
+            <small class="text-muted">出勤统计与签到历史</small>
+        </h2>
+    </div>
+</div>
+
+{% if student %}
+<!-- 统计卡片 -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body text-center">
+                <h5 class="card-title">出勤率</h5>
+                <h2 class="card-text">{{ attendance_rate }}%</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body text-center">
+                <h5 class="card-title">正常出勤</h5>
+                <h2 class="card-text">{{ present_count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body text-center">
+                <h5 class="card-title">迟到</h5>
+                <h2 class="card-text">{{ late_count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-secondary">
+            <div class="card-body text-center">
+                <h5 class="card-title">缺勤/请假</h5>
+                <h2 class="card-text">{{ leave_count|add:absent_count }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 月份导航 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <a href="?year={{ prev_year }}&month={{ prev_month }}" class="btn btn-outline-primary">
+                        <i class="bi bi-chevron-left"></i> 上一月
+                    </a>
+                    <h4 class="mb-0">{{ month_name }}</h4>
+                    <a href="?year={{ next_year }}&month={{ next_month }}" class="btn btn-outline-primary">
+                        下一月 <i class="bi bi-chevron-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 日历视图 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-calendar3"></i> 考勤日历
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered text-center">
+                        <thead>
+                            <tr class="table-primary">
+                                <th>周一</th><th>周二</th><th>周三</th><th>周四</th><th>周五</th><th>周六</th><th>周日</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for week in month_days %}
+                            <tr>
+                                {% for day in week %}
+                                <td style="height: 80px; vertical-align: middle;">
+                                    {% if day %}
+                                    <div>
+                                        <strong>{{ day.day }}</strong>
+                                        {% if day.record %}
+                                            {% if day.record.status == 'present' %}
+                                            <div class="badge bg-success mt-1">✓</div>
+                                            {% elif day.record.status == 'late' %}
+                                            <div class="badge bg-warning mt-1">迟到</div>
+                                            {% elif day.record.status == 'leave' %}
+                                            <div class="badge bg-info mt-1">请假</div>
+                                            {% else %}
+                                            <div class="badge bg-secondary mt-1">缺勤</div>
+                                            {% endif %}
+                                        {% else %}
+                                        <div class="text-muted small mt-1">-</div>
+                                        {% endif %}
+                                    </div>
+                                    {% else %}
+                                    <div class="text-muted">-</div>
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 详细记录 -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-list-ul"></i> 详细考勤记录
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>日期</th>
+                                <th>班级</th>
+                                <th>签到时间</th>
+                                <th>状态</th>
+                                <th>消耗课时</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in attendance_records %}
+                            <tr>
+                                <td>{{ record.date }}</td>
+                                <td>{{ record.class_name }}</td>
+                                <td>{{ record.check_in_time|time:"H:i"|default:"--" }}</td>
+                                <td>
+                                    {% if record.status == 'present' %}
+                                    <span class="badge bg-success">{{ record.status_display }}</span>
+                                    {% elif record.status == 'late' %}
+                                    <span class="badge bg-warning">{{ record.status_display }}</span>
+                                    {% elif record.status == 'leave' %}
+                                    <span class="badge bg-info">{{ record.status_display }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ record.status_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ record.consumed_lessons }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">暂无考勤记录</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i> 暂无学生信息，请联系老师添加您的信息
+</div>
+{% endif %}
+{% endblock %}

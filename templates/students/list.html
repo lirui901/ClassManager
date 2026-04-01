@@ -1,0 +1,521 @@
+{% extends 'base.html' %}
+
+{% block title %}学生管理{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="bi bi-people"></i> 学生管理
+            <small class="text-muted">添加、编辑、删除学生信息</small>
+        </h2>
+    </div>
+</div>
+
+<!-- 班级选择 -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-journal-bookmark"></i> 选择班级
+            </div>
+            <div class="card-body">
+                <select id="classSelect" class="form-select" onchange="selectClass(this.value)">
+                    <option value="">请选择班级</option>
+                    {% for class in classes %}
+                    <option value="{{ class.id }}">{{ class.name }} ({{ class.student_count }}人)</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加学生表单 -->
+<div class="row mb-4" id="addStudentForm" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-person-plus"></i> 添加学生
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">学生姓名 <span class="text-danger">*</span></label>
+                            <input type="text" id="studentName" class="form-control" placeholder="请输入学生姓名">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">性别</label>
+                            <select id="studentGender" class="form-select">
+                                <option value="M">男</option>
+                                <option value="F">女</option>
+                                <option value="O">其他</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">联系电话</label>
+                            <input type="text" id="studentPhone" class="form-control" placeholder="学生本人电话">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">家长电话</label>
+                            <input type="text" id="parentPhone" class="form-control" placeholder="家长联系电话">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">总课时</label>
+                            <input type="number" id="totalLessons" class="form-control" value="20" min="0">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">家庭地址</label>
+                            <input type="text" id="studentAddress" class="form-control" placeholder="家庭地址">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 创建账号选项 -->
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="createAccountCheckbox">
+                        <label class="form-check-label" for="createAccountCheckbox">
+                            <i class="bi bi-person-badge"></i> 同时创建登录账号
+                        </label>
+                        <small class="text-muted d-block">勾选后学生可使用账号登录系统查看课程和考勤</small>
+                    </div>
+                </div>
+                
+                <!-- 账号信息（默认隐藏） -->
+                <div id="accountFields" style="display: none;">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">用户名 <span class="text-danger">*</span></label>
+                                <input type="text" id="username" class="form-control" placeholder="登录用户名">
+                                <small class="text-muted">学生登录系统使用的用户名</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">密码 <span class="text-danger">*</span></label>
+                                <input type="password" id="password" class="form-control" placeholder="登录密码" value="123456">
+                                <small class="text-muted">建议设置为：123456</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="button" class="btn btn-primary" onclick="addStudent()">
+                    <i class="bi bi-plus-circle"></i> 添加学生
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 学生列表 -->
+<div class="row" id="studentListPanel" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-ul"></i> 学生列表</span>
+                <div>
+                    <button type="button" class="btn btn-sm btn-warning" onclick="batchCreateAccounts()">
+                        <i class="bi bi-person-plus"></i> 批量创建账号
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success" onclick="refreshStudentList()">
+                        <i class="bi bi-arrow-repeat"></i> 刷新
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>姓名</th>
+                                <th>性别</th>
+                                <th>联系电话</th>
+                                <th>剩余课时</th>
+                                <th>账号状态</th>
+                                <th>操作</th>
+                            </thead>
+                        <tbody id="studentsTbody">
+                            <tr><td colspan="6" class="text-center">请先选择班级</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 获取 CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    let selectedClassId = null;
+    let currentStudents = [];
+    
+    // 显示/隐藏账号字段
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkbox = document.getElementById('createAccountCheckbox');
+        if (checkbox) {
+            checkbox.addEventListener('change', function() {
+                const accountFields = document.getElementById('accountFields');
+                if (accountFields) {
+                    accountFields.style.display = this.checked ? 'block' : 'none';
+                }
+            });
+        }
+    });
+    
+    // 选择班级
+    function selectClass(classId) {
+        if (!classId) {
+            selectedClassId = null;
+            document.getElementById('addStudentForm').style.display = 'none';
+            document.getElementById('studentListPanel').style.display = 'none';
+            return;
+        }
+        
+        selectedClassId = classId;
+        document.getElementById('addStudentForm').style.display = 'block';
+        document.getElementById('studentListPanel').style.display = 'block';
+        loadStudents(classId);
+    }
+    
+    // 加载学生列表
+    async function loadStudents(classId) {
+        try {
+            const res = await fetch(`/students/api/class/${classId}/`, {
+                credentials: 'include'
+            });
+            
+            if (!res.ok) {
+                throw new Error('加载失败');
+            }
+            
+            currentStudents = await res.json();
+            renderStudentTable(currentStudents);
+        } catch (error) {
+            console.error('加载学生列表失败:', error);
+            document.getElementById('studentsTbody').innerHTML = 
+                '<tr><td colspan="6" class="text-center text-danger">加载失败，请刷新重试</td></tr>';
+        }
+    }
+    
+    // 渲染学生表格
+    function renderStudentTable(students) {
+        const tbody = document.getElementById('studentsTbody');
+        
+        if (!students || students.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center">暂无学生，请添加</td></tr>';
+            return;
+        }
+        
+        let html = '';
+        for (const student of students) {
+            html += `
+                <tr>
+                    <td><strong>${escapeHtml(student.name)}</strong></td>
+                    <td>${student.gender === 'M' ? '男' : (student.gender === 'F' ? '女' : '其他')}</td>
+                    <td>${student.phone || '-'}</td>
+                    <td><span class="badge bg-info">${student.remaining_lessons}</span> 课时</td>
+                    <td>
+                        ${student.has_account ? 
+                            `<span class="badge bg-success">已激活 (${student.username})</span>` : 
+                            `<span class="badge bg-secondary">未激活</span>`
+                        }
+                    </td>
+                    <td class="text-nowrap">
+                        <button class="btn btn-sm btn-outline-primary" onclick="editStudent(${student.id})">
+                            <i class="bi bi-pencil"></i> 编辑
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteStudent(${student.id})">
+                            <i class="bi bi-trash"></i> 删除
+                        </button>
+                        ${!student.has_account ? 
+                            `<button class="btn btn-sm btn-outline-success" onclick="createSingleAccount(${student.id})">
+                                <i class="bi bi-person-plus"></i> 创建账号
+                            </button>` : 
+                            `<button class="btn btn-sm btn-outline-warning" onclick="resetStudentPassword(${student.id})">
+                                <i class="bi bi-key"></i> 重置密码
+                            </button>`
+                        }
+                    </td>
+                </tr>
+            `;
+        }
+        tbody.innerHTML = html;
+    }
+    
+    // 添加学生
+    async function addStudent() {
+        const name = document.getElementById('studentName').value.trim();
+        if (!name) {
+            alert('请填写学生姓名');
+            return;
+        }
+        
+        if (!selectedClassId) {
+            alert('请先选择班级');
+            return;
+        }
+        
+        const createAccount = document.getElementById('createAccountCheckbox').checked;
+        
+        const data = {
+            class_id: parseInt(selectedClassId),
+            name: name,
+            gender: document.getElementById('studentGender').value,
+            phone: document.getElementById('studentPhone').value,
+            parent_phone: document.getElementById('parentPhone').value,
+            address: document.getElementById('studentAddress').value,
+            total_lessons: parseInt(document.getElementById('totalLessons').value) || 0,
+            create_account: createAccount
+        };
+        
+        if (createAccount) {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            
+            if (!username) {
+                alert('请填写用户名');
+                return;
+            }
+            if (!password) {
+                alert('请填写密码');
+                return;
+            }
+            
+            data.username = username;
+            data.password = password;
+        }
+        
+        try {
+            const csrftoken = getCookie('csrftoken');
+            
+            const res = await fetch('/students/api/add/', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify(data),
+                credentials: 'include'
+            });
+            
+            if (!res.ok) {
+                const errorText = await res.text();
+                throw new Error(`HTTP ${res.status}: ${errorText}`);
+            }
+            
+            const result = await res.json();
+            
+            if (result.account_created) {
+                alert(`学生添加成功！\n账号：${result.username}\n密码：${result.password}\n请妥善保管账号信息。`);
+            } else {
+                alert('学生添加成功！');
+            }
+            
+            // 清空表单
+            document.getElementById('studentName').value = '';
+            document.getElementById('studentPhone').value = '';
+            document.getElementById('parentPhone').value = '';
+            document.getElementById('studentAddress').value = '';
+            document.getElementById('totalLessons').value = '20';
+            document.getElementById('createAccountCheckbox').checked = false;
+            document.getElementById('accountFields').style.display = 'none';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '123456';
+            
+            // 刷新学生列表
+            loadStudents(selectedClassId);
+        } catch (error) {
+            console.error('添加学生失败:', error);
+            alert('添加失败：' + error.message);
+        }
+    }
+    
+    // 批量创建账号
+    async function batchCreateAccounts() {
+        if (!selectedClassId) {
+            alert('请先选择班级');
+            return;
+        }
+        
+        if (!confirm('将为当前班级中所有没有账号的学生创建账号，密码默认为123456，确定继续吗？')) {
+            return;
+        }
+        
+        try {
+            const csrftoken = getCookie('csrftoken');
+            
+            const res = await fetch('/students/api/batch-create-accounts/', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ class_id: parseInt(selectedClassId) }),
+                credentials: 'include'
+            });
+            
+            const data = await res.json();
+            
+            if (data.success) {
+                let message = `成功为 ${data.count} 名学生创建账号：\n\n`;
+                for (const r of data.results) {
+                    message += `${r.name} - 账号：${r.username} 密码：${r.password}\n`;
+                }
+                alert(message);
+                loadStudents(selectedClassId);
+            } else {
+                alert('批量创建失败：' + (data.error || '未知错误'));
+            }
+        } catch (error) {
+            console.error('批量创建失败:', error);
+            alert('批量创建失败，请检查网络连接');
+        }
+    }
+    
+    // 为单个学生创建账号
+    async function createSingleAccount(studentId) {
+        if (!confirm('将为该学生创建账号，密码默认为123456，确定继续吗？')) {
+            return;
+        }
+        
+        try {
+            const csrftoken = getCookie('csrftoken');
+            
+            const res = await fetch('/students/api/create-single-account/', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ student_id: studentId }),
+                credentials: 'include'
+            });
+            
+            const data = await res.json();
+            
+            if (data.success) {
+                alert(`账号创建成功！\n用户名：${data.username}\n密码：${data.password}`);
+                loadStudents(selectedClassId);
+            } else {
+                alert('创建失败：' + (data.error || '未知错误'));
+            }
+        } catch (error) {
+            console.error('创建账号失败:', error);
+            alert('创建失败，请检查网络连接');
+        }
+    }
+    
+    // 重置学生密码
+    async function resetStudentPassword(studentId) {
+        const newPassword = prompt('请输入新密码', '123456');
+        if (!newPassword) return;
+        
+        try {
+            const csrftoken = getCookie('csrftoken');
+            
+            const res = await fetch('/students/api/reset-password/', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ student_id: studentId, password: newPassword }),
+                credentials: 'include'
+            });
+            
+            const data = await res.json();
+            
+            if (data.success) {
+                alert('密码重置成功！');
+            } else {
+                alert('重置失败：' + (data.error || '未知错误'));
+            }
+        } catch (error) {
+            console.error('重置密码失败:', error);
+            alert('重置失败，请检查网络连接');
+        }
+    }
+    
+    // 刷新学生列表
+    function refreshStudentList() {
+        if (selectedClassId) {
+            loadStudents(selectedClassId);
+        }
+    }
+    
+    // 编辑学生
+    function editStudent(studentId) {
+        alert('编辑功能开发中...');
+    }
+    
+    // 删除学生
+    async function deleteStudent(studentId) {
+        if (!confirm('确定删除该学生吗？')) return;
+        
+        try {
+            const csrftoken = getCookie('csrftoken');
+            
+            const res = await fetch(`/students/api/${studentId}/delete/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': csrftoken
+                },
+                credentials: 'include'
+            });
+            
+            if (res.ok) {
+                alert('删除成功');
+                loadStudents(selectedClassId);
+            } else {
+                alert('删除失败');
+            }
+        } catch (error) {
+            console.error('删除失败:', error);
+            alert('删除失败');
+        }
+    }
+    
+    // HTML转义
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>
+{% endblock %}

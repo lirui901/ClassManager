@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+
+{% block title %}学习报告 - 学生端{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="bi bi-graph-up"></i> 学习报告
+            <small class="text-muted">学习数据分析与总结</small>
+        </h2>
+    </div>
+</div>
+
+{% if student %}
+<!-- 核心数据 -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <i class="bi bi-journal-bookmark fs-1"></i>
+                <h3 class="mt-2">{{ stats.attended_lessons }}</h3>
+                <p>已完成课时</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <i class="bi bi-calendar-check fs-1"></i>
+                <h3 class="mt-2">{{ stats.attendance_rate }}%</h3>
+                <p>出勤率</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <i class="bi bi-clock fs-1"></i>
+                <h3 class="mt-2">{{ stats.total_hours|floatformat:0 }}</h3>
+                <p>学习小时</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <i class="bi bi-trophy fs-1"></i>
+                <h3 class="mt-2">{{ stats.average_score }}</h3>
+                <p>综合评分</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 月度趋势图表 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-graph-up"></i> 月度出勤趋势
+            </div>
+            <div class="card-body">
+                <canvas id="attendanceChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 详细统计 -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-pie-chart"></i> 考勤分布
+            </div>
+            <div class="card-body">
+                <canvas id="attendancePieChart" height="200"></canvas>
+                <div class="row mt-3 text-center">
+                    <div class="col-3">
+                        <div class="text-success">✓ {{ stats.attended_lessons }}</div>
+                        <small>出勤</small>
+                    </div>
+                    <div class="col-3">
+                        <div class="text-warning">⚠ {{ stats.late_times }}</div>
+                        <small>迟到</small>
+                    </div>
+                    <div class="col-3">
+                        <div class="text-info">📝 {{ stats.leave_times }}</div>
+                        <small>请假</small>
+                    </div>
+                    <div class="col-3">
+                        <div class="text-secondary">✗ {{ stats.absent_times }}</div>
+                        <small>缺勤</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-info-circle"></i> 学习总结
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-lightbulb"></i> 学习建议
+                </div>
+                <ul>
+                    {% if stats.attendance_rate > 90 %}
+                    <li>👍 出勤率优秀，继续保持！</li>
+                    {% elif stats.attendance_rate > 70 %}
+                    <li>⚠️ 出勤率良好，建议提高出勤率</li>
+                    {% else %}
+                    <li>❗ 出勤率偏低，请注意按时上课</li>
+                    {% endif %}
+                    
+                    {% if stats.late_times > 0 %}
+                    <li>⏰ 本月有 {{ stats.late_times }} 次迟到，建议提前10分钟到校</li>
+                    {% endif %}
+                    
+                    {% if stats.remaining_lessons < 5 %}
+                    <li>📚 剩余课时不足，请及时续费</li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 最近课堂总结 -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-journal-text"></i> 最近课堂总结
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    {% for summary in recent_summaries %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ summary.course.name }} - {{ summary.date }}</h6>
+                            <small>{{ summary.created_by.username|default:"系统" }}</small>
+                        </div>
+                        <p class="mb-1">{{ summary.content|truncatechars:150 }}</p>
+                        {% if summary.homework %}
+                        <small class="text-muted">作业：{{ summary.homework|truncatechars:80 }}</small>
+                        {% endif %}
+                    </div>
+                    {% empty %}
+                    <p class="text-center text-muted my-3">暂无课堂总结</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加Chart.js库 -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // 月度趋势图表
+    const ctx = document.getElementById('attendanceChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [{% for data in monthly_data %}'{{ data.month }}',{% endfor %}],
+            datasets: [{
+                label: '出勤次数',
+                data: [{% for data in monthly_data %}{{ data.count }},{% endfor %}],
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: false
+                }
+            }
+        }
+    });
+    
+    // 考勤分布饼图
+    const pieCtx = document.getElementById('attendancePieChart').getContext('2d');
+    new Chart(pieCtx, {
+        type: 'pie',
+        data: {
+            labels: ['出勤', '迟到', '请假', '缺勤'],
+            datasets: [{
+                data: [{{ stats.attended_lessons }}, {{ stats.late_times }}, {{ stats.leave_times }}, {{ stats.absent_times }}],
+                backgroundColor: ['#28a745', '#ffc107', '#17a2b8', '#6c757d']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+</script>
+{% else %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i> 暂无学生信息，请联系老师添加您的信息
+</div>
+{% endif %}
+{% endblock %}

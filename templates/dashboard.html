@@ -1,0 +1,293 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}首页 - 班级管理系统{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card trend-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>
+                    <i class="bi bi-sun"></i> 每日趋势 
+                    <span id="trend-date" class="text-muted small"></span>
+                </span>
+                <button class="btn btn-sm btn-outline-primary" onclick="refreshTrend()">
+                    <i class="bi bi-arrow-repeat"></i> 刷新
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5 class="text-success">
+                            <i class="bi bi-check-circle"></i> 宜
+                        </h5>
+                        <ul id="suitable-list" class="list-unstyled">
+                            <li class="text-muted">加载中...</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5 class="text-danger">
+                            <i class="bi bi-exclamation-circle"></i> 忌
+                        </h5>
+                        <ul id="unsuitable-list" class="list-unstyled">
+                            <li class="text-muted">加载中...</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="mb-4">仪表盘</h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">班级总数</h6>
+                        <h2 class="card-text mb-0">{{ class_count|default:0 }}</h2>
+                    </div>
+                    <i class="bi bi-journal-bookmark fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">学生总数</h6>
+                        <h2 class="card-text mb-0">{{ student_count|default:0 }}</h2>
+                    </div>
+                    <i class="bi bi-people fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">今日签到</h6>
+                        <h2 class="card-text mb-0">{{ today_attendance|default:0 }}</h2>
+                    </div>
+                    <i class="bi bi-calendar-check fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">最近总结</h6>
+                        <h2 class="card-text mb-0">{{ recent_summaries|length }}</h2>
+                    </div>
+                    <i class="bi bi-journal-text fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>最近签到记录</span>
+                <a href="{% url 'attendance_list' %}" class="btn btn-sm btn-outline-primary">查看更多</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>学生</th>
+                                <th>班级</th>
+                                <th>时间</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in recent_attendance %}
+                            <tr>
+                                <td>{{ record.student.name }}</td>
+                                <td>{{ record.class_obj.name }}</td>
+                                <td>{{ record.check_in_time|time:"H:i" }}</td>
+                                <td>
+                                    {% if record.status == 'present' %}
+                                    <span class="badge bg-success">已签到</span>
+                                    {% elif record.status == 'late' %}
+                                    <span class="badge bg-warning">迟到</span>
+                                    {% elif record.status == 'leave' %}
+                                    <span class="badge bg-info">请假</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">缺勤</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center">暂无签到记录</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>最近课堂总结</span>
+                <a href="{% url 'summary_list' %}" class="btn btn-sm btn-outline-primary">查看更多</a>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    {% for summary in recent_summaries %}
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ summary.class_obj.name }} - {{ summary.course.name }}</h6>
+                            <small>{{ summary.date }}</small>
+                        </div>
+                        <p class="mb-1">{{ summary.content|truncatechars:50 }}</p>
+                        <small class="text-muted">创建人：{{ summary.created_by.username|default:"系统" }}</small>
+                    </a>
+                    {% empty %}
+                    <p class="text-center text-muted my-3">暂无课堂总结</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+    // 加载每日趋势
+    function loadTodayTrend() {
+        fetch('/dailytrend/api/today/')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('trend-date').textContent = data.date;
+                
+                // 显示宜的事项
+                const suitableList = document.getElementById('suitable-list');
+                suitableList.innerHTML = '';
+                data.suitable.forEach(item => {
+                    suitableList.innerHTML += `<li><i class="bi bi-check-circle-fill text-success me-2"></i>${item}</li>`;
+                });
+                
+                // 显示忌的事项
+                const unsuitableList = document.getElementById('unsuitable-list');
+                unsuitableList.innerHTML = '';
+                data.unsuitable.forEach(item => {
+                    unsuitableList.innerHTML += `<li><i class="bi bi-exclamation-circle-fill text-danger me-2"></i>${item}</li>`;
+                });
+            })
+            .catch(error => {
+                console.error('加载每日趋势失败:', error);
+                document.getElementById('suitable-list').innerHTML = '<li class="text-danger">加载失败</li>';
+                document.getElementById('unsuitable-list').innerHTML = '<li class="text-danger">加载失败</li>';
+            });
+    }
+    
+    // 刷新每日趋势
+    function refreshTrend() {
+        const button = event.target;
+        button.disabled = true;
+        button.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> 刷新中...';
+        
+        fetch('/dailytrend/api/refresh/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('trend-date').textContent = data.date;
+                
+                const suitableList = document.getElementById('suitable-list');
+                suitableList.innerHTML = '';
+                data.suitable.forEach(item => {
+                    suitableList.innerHTML += `<li><i class="bi bi-check-circle-fill text-success me-2"></i>${item}</li>`;
+                });
+                
+                const unsuitableList = document.getElementById('unsuitable-list');
+                unsuitableList.innerHTML = '';
+                data.unsuitable.forEach(item => {
+                    unsuitableList.innerHTML += `<li><i class="bi bi-exclamation-circle-fill text-danger me-2"></i>${item}</li>`;
+                });
+            }
+        })
+        .catch(error => {
+            console.error('刷新每日趋势失败:', error);
+            alert('刷新失败，请稍后重试');
+        })
+        .finally(() => {
+            button.disabled = false;
+            button.innerHTML = '<i class="bi bi-arrow-repeat"></i> 刷新';
+        });
+    }
+    
+    // 获取 CSRF token 的辅助函数
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // 页面加载时加载每日趋势
+    document.addEventListener('DOMContentLoaded', loadTodayTrend);
+</script>
+
+<style>
+    .trend-card {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .trend-card .card-header {
+        background: rgba(255,255,255,0.9);
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+    }
+    
+    .trend-card ul li {
+        padding: 0.3rem 0;
+        font-size: 1rem;
+    }
+    
+    .spin {
+        animation: spin 1s linear infinite;
+        display: inline-block;
+    }
+    
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}

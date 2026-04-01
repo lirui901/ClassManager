@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+
+{% block title %}课堂总结 - 班级管理系统{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="mb-4">课堂总结</h2>
+        <div class="row">
+            <div class="col-md-4">
+                <select class="form-select" id="classSelect" onchange="loadSummaries()">
+                    <option value="">选择班级</option>
+                    {% for class in classes %}
+                    <option value="{{ class.id }}">{{ class.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-8">
+                <button class="btn btn-primary" onclick="showAddSummaryModal()" {% if not classes %}disabled{% endif %}>
+                    <i class="bi bi-plus-circle"></i> 新建总结
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="list-group" id="summaryList">
+                    <div class="text-center text-muted py-4">请先选择班级</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 总结模态框 -->
+<div class="modal fade" id="summaryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="summaryModalTitle">新建课堂总结</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="summaryForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="summaryDate" class="form-label">上课日期</label>
+                        <input type="date" class="form-control" id="summaryDate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="summaryCourse" class="form-label">课程</label>
+                        <select class="form-select" id="summaryCourse" required>
+                            <option value="">选择课程</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="summaryContent" class="form-label">教学内容</label>
+                        <textarea class="form-control" id="summaryContent" rows="5" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="summaryHomework" class="form-label">课后作业</label>
+                        <textarea class="form-control" id="summaryHomework" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="summaryOutstanding" class="form-label">表现优秀学生</label>
+                        <textarea class="form-control" id="summaryOutstanding" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="summaryImprovement" class="form-label">需要改进学生</label>
+                        <textarea class="form-control" id="summaryImprovement" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="summaryNotes" class="form-label">备注</label>
+                        <textarea class="form-control" id="summaryNotes" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveSummary()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 查看总结模态框 -->
+<div class="modal fade" id="viewSummaryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">课堂总结详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="viewSummaryContent">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentClassId = null;
+let currentSummaryId = null;
+
+function loadSummaries() {
+    const classId = document.getElementById('classSelect').value;
+    if (!classId) return;
+    
+    currentClassId = classId;
+    fetch(`/summaries/api/class/${classId}/`)
+        .then(response => response.json())
+        .then(data => {
+            const list = document.getElementById('summaryList');
+            if (data.length === 0) {
+                list.innerHTML = '<div class="text-center text-muted py-4">暂无课堂总结</div>';
+                return;
+            }
+            
+            let html = '';
+            data.forEach(summary => {
+                html += `
+                    <a href="#" class="list-group-item list-group-item-action" onclick="viewSummary(${summary.id})">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">${summary.date} - ${summary.course_name}</h6>
+                            <small>${summary.created_by}</small>
+                        </div>
+                        <p class="mb-1">${summary.content_preview}</p>
+                    </a>
+                `;
+            });
+            list.innerHTML = html;
+        });
+}
+
+function showAddSummaryModal() {
+    currentSummaryId = null;
+    document.getElementById('summaryModalTitle').textContent = '新建课堂总结';
+    document.getElementById('summaryDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('summaryContent').value = '';
+    document.getElementById('summaryHomework').value = '';
+    document.getElementById('summaryOutstanding').value = '';
+    document.getElementById('summaryImprovement').value = '';
+    document.getElementById('summaryNotes').value = '';
+    
+    // 加载课程列表
+    fetch('/courses/api/list/')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('summaryCourse');
+            select.innerHTML = '<option value="">选择课程</option>';
+            data.forEach(course => {
+                select.innerHTML += `<option value="${course.id}">${course.name}</option>`;
+            });
+        });
+    
+    new bootstrap.Modal(document.getElementById('summaryModal')).show();
+}
+
+function saveSummary() {
+    const data = {
+        class_id: currentClassId,
+        course_id: document.getElementById('summaryCourse').value,
+        date: document.getElementById('summaryDate').value,
+        content: document.getElementById('summaryContent').value,
+        homework: document.getElementById('summaryHomework').value,
+        outstanding_students: document.getElementById('summaryOutstanding').value,
+        improvement_students: document.getElementById('summaryImprovement').value,
+        notes: document.getElementById('summaryNotes').value
+    };
+    
+    const url = currentSummaryId ? 
+        `/summaries/api/${currentSummaryId}/edit/` : 
+        '/summaries/api/add/';
+    const method = currentSummaryId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (response.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('summaryModal')).hide();
+            loadSummaries();
+        } else {
+            alert('保存失败');
+        }
+    });
+}
+
+function viewSummary(summaryId) {
+    fetch(`/summaries/api/${summaryId}/`)
+        .then(response => response.json())
+        .then(data => {
+            const content = document.getElementById('viewSummaryContent');
+            content.innerHTML = `
+                <p><strong>上课日期：</strong> ${data.date}</p>
+                <p><strong>课程：</strong> ${data.course_name}</p>
+                <p><strong>教学内容：</strong></p>
+                <p class="mb-3">${(data.content || '').replace(/\n/g, '<br>')}</p>
+                <p><strong>课后作业：</strong></p>
+                <p class="mb-3">${(data.homework || '').replace(/\n/g, '<br>') || '无'}</p>
+                <p><strong>表现优秀学生：</strong></p>
+                <p class="mb-3">${(data.outstanding_students || '').replace(/\n/g, '<br>') || '无'}</p>
+                <p><strong>需要改进学生：</strong></p>
+                <p class="mb-3">${(data.improvement_students || '').replace(/\n/g, '<br>') || '无'}</p>
+                <p><strong>备注：</strong></p>
+                <p class="mb-3">${(data.notes || '').replace(/\n/g, '<br>') || '无'}</p>
+                <p class="text-muted small">创建人：${data.created_by} 创建时间：${data.created_at}</p>
+            `;
+            new bootstrap.Modal(document.getElementById('viewSummaryModal')).show();
+        });
+}
+</script>
+{% endblock %}
